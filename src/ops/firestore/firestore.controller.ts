@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 
@@ -13,10 +14,14 @@ import { FirebaseService } from './firebase/firebase.service';
 import { Artefact } from 'src/dto/artefact';
 
 import { Guid } from '@lib/guid.util';
+import { AuthService } from 'src/authorization/auth.service';
 
 @Controller('firestore')
 export class FirestoreController {
-  constructor(private readonly firebase: FirebaseService) {}
+  constructor(
+    private readonly firebase: FirebaseService,
+    private readonly authService: AuthService,
+  ) {}
 
   @UseGuards(AuthorizationGuard)
   @Get('artifacts')
@@ -31,7 +36,14 @@ export class FirestoreController {
 
   @UseGuards(AuthorizationGuard)
   @Post('create')
-  createArtefact(@Body() artefact: Artefact): Promise<Artefact> {
+  async createArtefact(
+    @Req() request: Request,
+    @Body() artefact: Artefact,
+  ): Promise<Artefact> {
+    const token = request.headers['authorization'].replace('Bearer ', '');
+    const sub = await this.authService.getSubFromToken(token);
+
+    console.log(`User ID: ${sub}`);
     const uuid = Guid.newGuid();
     uuid;
 
