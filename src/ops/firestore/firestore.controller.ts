@@ -13,7 +13,6 @@ import { AuthorizationGuard } from 'src/authorization/authorization.guard';
 import { FirebaseService } from './firebase/firebase.service';
 import { Artefact } from 'src/dto/artefact';
 
-import { Guid } from '@lib/guid.util';
 import { AuthService } from 'src/authorization/auth.service';
 
 @Controller('firestore')
@@ -44,10 +43,7 @@ export class FirestoreController {
     const sub = await this.authService.getSubFromToken(token);
 
     console.log(`User ID: ${sub}`);
-    const uuid = Guid.newGuid();
-    uuid;
-
-    return this.firebase.createArtefact(artefact);
+    return this.firebase.createArtefact(artefact, sub);
   }
 
   @UseGuards(AuthorizationGuard)
