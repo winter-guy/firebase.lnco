@@ -18,8 +18,9 @@ import { Artefact } from 'src/dto/artefact';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 import { AuthService } from 'src/authorization/auth.service';
+import { FileRef } from 'src/dto/files';
 
-@Controller('firestore')
+@Controller('api/v2')
 export class FirestoreController {
   constructor(
     private readonly firebase: FirebaseService,
@@ -27,12 +28,12 @@ export class FirestoreController {
   ) {}
 
   @UseGuards(AuthorizationGuard)
-  @Get('artifacts')
+  @Get('fetch')
   getArtifacts(): Promise<Artefact[]> {
     return this.firebase.getArtifacts();
   }
   @UseGuards(AuthorizationGuard)
-  @Get(':id')
+  @Get('fetch/:id')
   async getArtefactById(
     @Req() request: Request,
     @Param('id') id: string,
@@ -43,7 +44,7 @@ export class FirestoreController {
   }
 
   @UseGuards(AuthorizationGuard)
-  @Post('create')
+  @Post('publish')
   async createArtefact(
     @Req() request: Request,
     @Body() artefact: Artefact,
@@ -56,14 +57,14 @@ export class FirestoreController {
   }
 
   @UseGuards(AuthorizationGuard)
-  @Delete(':id')
+  @Delete('remove/:id')
   async delete(@Param('id') id: string): Promise<void> {
     return this.firebase.deleteItem(id);
   }
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('image'))
-  async uploadImage(@UploadedFile() file, @Body('isPrivate') isPrivate: string): Promise<string> {
+  async uploadImage(@UploadedFile() file, @Body('isPrivate') isPrivate: string): Promise<FileRef> {
     const pau = await this.firebase.uploadItem(file, JSON.parse(isPrivate));
     return pau;
   }

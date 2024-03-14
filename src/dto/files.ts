@@ -1,4 +1,5 @@
-export interface Blob {
+export interface FileRef {
     url: string;
-    
+    fileRef: string;
+    expiresBy?: number
   }

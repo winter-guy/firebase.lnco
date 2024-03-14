@@ -1,7 +1,10 @@
+import { File } from '@google-cloud/storage';
 import { Guid } from '@lib/guid.util';
 import { Injectable } from '@nestjs/common';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
+
 import { Artefact, Article } from 'src/dto/artefact';
+import { FileRef } from 'src/dto/files';
 
 @Injectable()
 export class FirebaseService {
@@ -146,7 +149,7 @@ export class FirebaseService {
     }
   }
 
-  async uploadItem(file: any, isPrivate: boolean): Promise<string> {
+  async uploadItem(file: any, isPrivate: boolean): Promise<FileRef> {
     try {
       const guid = Guid.newGuid() + `.${file.originalname.split('.').pop()}`;
       const storageRef = this.firebase.storage.bucket('lnco-artifacts.appspot.com');
@@ -156,23 +159,36 @@ export class FirebaseService {
       const fileRef = storageRef.file(filePath);
       await fileRef.save(file.buffer);
   
-      if (isPrivate) {
-        const [signedUrl] = await fileRef.getSignedUrl({
-          version: 'v4',
-          action: 'read',
-          expires: Date.now() + 15 * 60 * 1000, // URL expires in 15 minutes
-        });
-
-        return signedUrl;
-      } else {
-        await fileRef.makePublic();
-
-        return `https://storage.googleapis.com/lnco-artifacts.appspot.com/images/${guid}`;
+      if(isPrivate) {
+        const ref = await this.generateRefForPrivateFiles(fileRef);
+        return {
+          url: ref,
+          fileRef: `https://storage.googleapis.com/lnco-artifacts.appspot.com/${filePath}`,
+          expiresBy: Date.now() + 15 * 60 * 1000,
+        };
       }
+
+      await fileRef.makePublic();
+      return {
+        url: `https://storage.googleapis.com/lnco-artifacts.appspot.com/images/${guid}`,
+        fileRef: `https://storage.googleapis.com/lnco-artifacts.appspot.com/${filePath}`,
+        expiresBy: 0
+      };
+
     } catch (error) {
       console.error(`Error uploading item: ${error}`);
       throw new Error('Failed to upload item');
     }
+  }
+
+  async generateRefForPrivateFiles(fileRef: File): Promise<string> {
+    const [signedUrl] = await fileRef.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 15 * 60 * 1000, // URL expires in 15 minutes
+    });
+
+    return signedUrl
   }
   
 
