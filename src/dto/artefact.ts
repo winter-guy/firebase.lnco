@@ -82,4 +82,5 @@ export interface Highlight extends Highlights {
 
 export interface Article extends Artefact {
   isEditable: boolean;
+  isDelete: boolean;
 }

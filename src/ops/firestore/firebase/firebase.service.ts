@@ -42,33 +42,9 @@ export class FirebaseService {
     return {
       id: snapshot.id,
       isEditable: doesBelongToUser,
+      isDelete: doesBelongToUser,
       ...snapshot.data(),
     } as Article;
-  }
-
-  async doesArtefactBelongToUser(id: string, _sub: string): Promise<boolean> {
-    const userRef = this.firebase.firestore
-      .collection('contributors')
-      .doc(_sub);
-
-    try {
-      const userSnapshot = await userRef.get();
-
-      if (!userSnapshot.exists) {
-        throw new Error('User Not Found');
-      }
-
-      const userData = userSnapshot.data();
-
-      // Check if 'artifacts' array exists and contains the specified ID
-      if (userData && userData.artifacts && userData.artifacts.includes(id)) {
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      throw new Error(`Error checking artifact ownership: ${error['message']}`);
-    }
   }
 
   async createArtefact(artefact: Artefact, sub: string): Promise<Artefact> {
@@ -78,10 +54,9 @@ export class FirebaseService {
         .collection('artifacts')
         .add(artefact);
 
-      await this.updateArtefact(docRef.id, { ...artefact, id: docRef.id });
-
+      await docRef.update({ ...artefact, id: docRef.id });
+      
       // Log the ID of the newly created document
-      console.log(`Document added with ID: ${docRef.id}`);
       const isUpdatedRef = await this.updateContributorsWithDocRef(
         docRef.id,
         sub,
@@ -96,10 +71,7 @@ export class FirebaseService {
     }
   }
 
-  async updateContributorsWithDocRef(
-    _docRef: string,
-    _sub: string,
-  ): Promise<void> {
+  async updateContributorsWithDocRef(_docRef: string, _sub: string): Promise<void> {
     const _userRef = this.firebase.firestore
       .collection('contributors')
       .doc(_sub);
@@ -125,7 +97,11 @@ export class FirebaseService {
       });
   }
 
-  async updateArtefact(id: string, artefact: Partial<Artefact>): Promise<Artefact> {
+  async updateArtefact(id: string, artefact: Partial<Artefact>, _sub: string): Promise<Artefact> {
+    if(!await this.doesArtefactBelongToUser(id, _sub)){
+      throw new Error('Failed to update document');
+    }
+
     const docRef = this.firebase.firestore.collection('artifacts').doc(id);
     await docRef.update(artefact);
 
@@ -137,7 +113,11 @@ export class FirebaseService {
     } as Artefact;
   }
 
-  async deleteItem(id: string): Promise<void> {
+  async deleteItem(id: string, _sub: string): Promise<void> {
+    if(!await this.doesArtefactBelongToUser(id, _sub)){
+      throw new Error('Failed to delete document');
+    }
+
     const docRef = this.firebase.firestore.collection('artifacts').doc(id);
 
     try {
@@ -194,5 +174,30 @@ export class FirebaseService {
 
   async removeDocRefOnDel(): Promise<void> {
     return;
+  }
+
+  async doesArtefactBelongToUser(id: string, _sub: string): Promise<boolean> {
+    const userRef = this.firebase.firestore
+      .collection('contributors')
+      .doc(_sub);
+
+    try {
+      const userSnapshot = await userRef.get();
+
+      if (!userSnapshot.exists) {
+        throw new Error('User Not Found');
+      }
+
+      const userData = userSnapshot.data();
+
+      // Check if 'artifacts' array exists and contains the specified ID
+      if (userData && userData.artifacts && userData.artifacts.includes(id)) {
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      throw new Error(`Error checking artifact ownership: ${error['message']}`);
+    }
   }
 }

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UploadedFile,
@@ -57,9 +58,26 @@ export class FirestoreController {
   }
 
   @UseGuards(AuthorizationGuard)
+  @Patch('update/:id')
+  async updateArtefact(
+    @Req() request: Request,
+    @Param('id') id: string, 
+    @Body() payload: Artefact,
+  ): Promise<Artefact> {
+    const token = request.headers['authorization'].replace('Bearer ', '');
+    const sub = await this.authService.getSubFromToken(token);
+
+    console.log(`User ID: ${sub}`);
+    return this.firebase.updateArtefact(id, payload, sub);
+  }
+
+  @UseGuards(AuthorizationGuard)
   @Delete('remove/:id')
-  async delete(@Param('id') id: string): Promise<void> {
-    return this.firebase.deleteItem(id);
+  async delete(@Req() request: Request, @Param('id') id: string): Promise<void> {
+    const token = request.headers['authorization'].replace('Bearer ', '');
+    const sub = await this.authService.getSubFromToken(token);
+
+    return this.firebase.deleteItem(id, sub);
   }
 
   @Post('upload')
