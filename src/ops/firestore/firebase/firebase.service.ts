@@ -71,32 +71,6 @@ export class FirebaseService {
     }
   }
 
-  async updateContributorsWithDocRef(_docRef: string, _sub: string): Promise<void> {
-    const _userRef = this.firebase.firestore
-      .collection('contributors')
-      .doc(_sub);
-
-    _userRef
-      .get()
-      .then((docSnapshot) => {
-        if (docSnapshot.exists) {
-          // Document with ID _sub exists in the 'contributors' collection
-          _userRef.update({
-            artifacts: [...docSnapshot.data().artifacts, _docRef],
-          });
-
-          // check process to verify the id updated in contribution collection of specified sub claim.
-        } else {
-          // Document with ID _sub does not exist
-          console.log('Document does not exist');
-          _userRef.set({ artifacts: [_docRef] });
-        }
-      })
-      .catch((error) => {
-        console.error('Error checking document existence:', error);
-      });
-  }
-
   async updateArtefact(id: string, artefact: Partial<Artefact>, _sub: string): Promise<Artefact> {
     if(!await this.doesArtefactBelongToUser(id, _sub)){
       throw new Error('Failed to update document');
@@ -122,6 +96,7 @@ export class FirebaseService {
 
     try {
       await docRef.delete();
+      await this.removeDocRefOnDel(id, _sub);
       console.log(`Document with ID ${id} deleted successfully`);
     } catch (error) {
       console.error(`Error deleting document: ${error}`);
@@ -171,9 +146,61 @@ export class FirebaseService {
     return signedUrl
   }
   
+  async updateContributorsWithDocRef(_docRefID: string, _sub: string): Promise<void> {
+    const contributorRef = this.firebase.firestore
+      .collection('contributors')
+      .doc(_sub);
 
-  async removeDocRefOnDel(): Promise<void> {
-    return;
+    contributorRef
+      .get()
+      .then((contributorSnapshot) => {
+        if (contributorSnapshot.exists) {
+          // Document with ID _sub exists in the 'contributors' collection
+          contributorRef.update({
+            artifacts: [...contributorSnapshot.data().artifacts, _docRefID],
+          });
+
+          // check process to verify the id updated in contribution collection of specified sub claim.
+        } else {
+          // Document with ID _sub does not exist
+          console.log('Document does not exist');
+          contributorRef.set({ artifacts: [_docRefID] });
+        }
+      })
+      .catch((error) => {
+        console.error('Error checking document existence:', error);
+      });
+  }
+
+  async removeDocRefOnDel(id: string, _sub: string): Promise<void> {
+    const contributorRef = this.firebase.firestore
+      .collection('contributors')
+      .doc(_sub);
+    
+      try {
+        const contributorSnapshot = await contributorRef.get();
+
+        if (!contributorSnapshot.exists) {
+          throw new Error('Contributor document not found');
+        }
+    
+        const contributorData = contributorSnapshot.data();
+        if (!contributorData || !Array.isArray(contributorData.artifacts)) {
+          throw new Error('Artifacts field is missing or not an array');
+        }
+        
+        const updatedArtifacts = [...contributorData.artifacts];
+        const indexToRemove = updatedArtifacts.indexOf(id);
+        
+        if (indexToRemove !== -1) {
+          updatedArtifacts.splice(indexToRemove, 1); // Remove the item at indexToRemove
+        }
+        
+        await contributorRef.update({ artifacts: updatedArtifacts });
+      } catch (error) {
+        console.error('Error removing artifact:', error);
+        throw error; // Rethrow the error for handling in the calling function if necessary
+      }
   }
 
   async doesArtefactBelongToUser(id: string, _sub: string): Promise<boolean> {
