@@ -1,6 +1,7 @@
+import { Guid } from '@lib/guid.util';
 import { Injectable } from '@nestjs/common';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
-import { Artefact } from 'src/dto/artefact';
+import { Artefact, Article } from 'src/dto/artefact';
 
 @Injectable()
 export class FirebaseService {
@@ -25,10 +26,11 @@ export class FirebaseService {
     return artifacts;
   }
 
-  async getArtefactById(id: string): Promise<Artefact> {
+  async getArtefactById(id: string, _sub: string): Promise<Article> {
     const docRef = this.firebase.firestore.collection('artifacts');
 
     const snapshot = await docRef.doc(id).get();
+    const doesBelongToUser = await this.doesArtefactBelongToUser(id, _sub);
 
     if (!snapshot.exists) {
       throw new Error('Artefact Not Found');
@@ -36,8 +38,34 @@ export class FirebaseService {
 
     return {
       id: snapshot.id,
+      isEditable: doesBelongToUser,
       ...snapshot.data(),
-    } as Artefact;
+    } as Article;
+  }
+
+  async doesArtefactBelongToUser(id: string, _sub: string): Promise<boolean> {
+    const userRef = this.firebase.firestore
+      .collection('contributors')
+      .doc(_sub);
+
+    try {
+      const userSnapshot = await userRef.get();
+
+      if (!userSnapshot.exists) {
+        throw new Error('User Not Found');
+      }
+
+      const userData = userSnapshot.data();
+
+      // Check if 'artifacts' array exists and contains the specified ID
+      if (userData && userData.artifacts && userData.artifacts.includes(id)) {
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      throw new Error(`Error checking artifact ownership: ${error['message']}`);
+    }
   }
 
   async createArtefact(artefact: Artefact, sub: string): Promise<Artefact> {
@@ -48,7 +76,7 @@ export class FirebaseService {
         .add(artefact);
 
       await this.updateArtefact(docRef.id, { ...artefact, id: docRef.id });
-      console.log({ ...artefact, id: docRef.id });
+
       // Log the ID of the newly created document
       console.log(`Document added with ID: ${docRef.id}`);
       const isUpdatedRef = await this.updateContributorsWithDocRef(
@@ -92,19 +120,14 @@ export class FirebaseService {
       .catch((error) => {
         console.error('Error checking document existence:', error);
       });
-
-    console.log((await _userRef.get()).data());
   }
 
-  async updateArtefact(
-    id: string,
-    artefact: Partial<Artefact>,
-  ): Promise<Artefact> {
+  async updateArtefact(id: string, artefact: Partial<Artefact>): Promise<Artefact> {
     const docRef = this.firebase.firestore.collection('artifacts').doc(id);
     await docRef.update(artefact);
 
     const updates = await docRef.get();
-    console.log(updates);
+
     return {
       id: updates.id,
       ...updates.data(),
@@ -122,6 +145,36 @@ export class FirebaseService {
       throw new Error('Failed to delete document');
     }
   }
+
+  async uploadItem(file: any, isPrivate: boolean): Promise<string> {
+    try {
+      const guid = Guid.newGuid() + `.${file.originalname.split('.').pop()}`;
+      const storageRef = this.firebase.storage.bucket('lnco-artifacts.appspot.com');
+  
+      const filePath = isPrivate ? 'private/images/' + guid : 'images/' + guid;
+  
+      const fileRef = storageRef.file(filePath);
+      await fileRef.save(file.buffer);
+  
+      if (isPrivate) {
+        const [signedUrl] = await fileRef.getSignedUrl({
+          version: 'v4',
+          action: 'read',
+          expires: Date.now() + 15 * 60 * 1000, // URL expires in 15 minutes
+        });
+
+        return signedUrl;
+      } else {
+        await fileRef.makePublic();
+
+        return `https://storage.googleapis.com/lnco-artifacts.appspot.com/images/${guid}`;
+      }
+    } catch (error) {
+      console.error(`Error uploading item: ${error}`);
+      throw new Error('Failed to upload item');
+    }
+  }
+  
 
   async removeDocRefOnDel(): Promise<void> {
     return;

@@ -79,3 +79,7 @@ export interface Highlight extends Highlights {
   imgUrl?: string;
   time?: string;
 }
+
+export interface Article extends Artefact {
+  isEditable: boolean;
+}
