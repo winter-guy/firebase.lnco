@@ -1,86 +1,79 @@
-import { IsOptional } from 'class-validator';
-
-export class Artefact {
-  id: string;
-  author: string | undefined;
+export class Document {
   blocks: BlocksEntity[];
   time: number;
   version: string;
-  username: string | undefined;
-  content_length: string;
-  tag: Tag[];
-  highlight: Highlight;
 }
 
-export class BlocksEntity {
+export class Record extends Document {
+  id: string;
+  meta: Meta;
+}
+
+/**
+ * "SecRecord" (if "Permissions" implies security permissions)
+*/
+export interface SecRecord extends Record {
+  isEditable: boolean;
+  isDelete: boolean;
+}
+
+export interface Meta {
+  id?: string;
+  author: string;
+  username: string;
+
+  tags: Tag[];
+  imgs: string[];
+  createdDate: number;
+  modifiedDate: number;
+
+  head: string;
+  meta?: string;
+  details: string;
+
+  cl?: number; /* content length */
+}
+
+export interface Journal {
+  id: string;
+
+  author: string;
+  forepart: string;
+  backdrop: string;
+  createdDate: number;
+  modifiedDate: number;
+
+  head: string;
+  meta: string;
+  details: string;
+
+  cl: number;
+}
+
+
+/**
+ * no to expose interface. (for internal references)
+ */
+
+class BlocksEntity {
   data: Data;
   id: string;
   type: string;
 }
 
-export class Data {
-  @IsOptional()
+class Data {
   level?: number | null;
-
-  @IsOptional()
   text?: string | null;
-
-  @IsOptional()
   caption?: string | null;
-
-  @IsOptional()
-  file?: File | null;
-
-  @IsOptional()
+  file?: { url: string } | null;
   stretched?: boolean | null;
-
-  @IsOptional()
   withBackground?: boolean | null;
-
-  @IsOptional()
   withBorder?: boolean | null;
-
-  @IsOptional()
   items?: string[] | null;
-
-  @IsOptional()
   style?: string | null;
-
-  @IsOptional()
   code?: string | null;
 }
 
-export interface File {
-  url: string;
-}
-
-export class Tag {
+class Tag {
   name: string;
-}
-
-export class Highlights {
-  @IsOptional()
-  author?: string;
-
-  @IsOptional()
-  header?: string | null;
-  content: string;
-}
-
-export interface PublishMeta extends Highlights {
-  imgUrl?: string[] | string;
-}
-
-export interface Highlight extends Highlights {
-  id: string;
-  username?: string | undefined;
-  content_length?: string;
-  tag: Tag[];
-  imgUrl?: string;
-  time?: string;
-}
-
-export interface Article extends Artefact {
-  isEditable: boolean;
-  isDelete: boolean;
 }

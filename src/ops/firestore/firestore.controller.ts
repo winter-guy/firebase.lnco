@@ -14,7 +14,7 @@ import {
 
 import { AuthorizationGuard } from 'src/authorization/authorization.guard';
 import { FirebaseService } from './firebase/firebase.service';
-import { Artefact } from 'src/dto/artefact';
+import { Journal, Record } from 'src/dto/artefact';
 
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -30,15 +30,16 @@ export class FirestoreController {
 
   @UseGuards(AuthorizationGuard)
   @Get('fetch')
-  getArtifacts(): Promise<Artefact[]> {
+  getArtifacts(): Promise<Journal[]> {
     return this.firebase.getArtifacts();
   }
+
   @UseGuards(AuthorizationGuard)
   @Get('fetch/:id')
   async getArtefactById(
     @Req() request: Request,
     @Param('id') id: string,
-  ): Promise<Artefact> {
+  ): Promise<Record> {
     const token = request.headers['authorization'].replace('Bearer ', '');
     const sub = await this.authService.getSubFromToken(token);
     return this.firebase.getArtefactById(id, sub);
@@ -48,8 +49,8 @@ export class FirestoreController {
   @Post('publish')
   async createArtefact(
     @Req() request: Request,
-    @Body() artefact: Artefact,
-  ): Promise<Artefact> {
+    @Body() artefact: Record,
+  ): Promise<Record> {
     const token = request.headers['authorization'].replace('Bearer ', '');
     const sub = await this.authService.getSubFromToken(token);
 
@@ -62,8 +63,8 @@ export class FirestoreController {
   async updateArtefact(
     @Req() request: Request,
     @Param('id') id: string, 
-    @Body() payload: Artefact,
-  ): Promise<Artefact> {
+    @Body() payload: Record,
+  ): Promise<Record> {
     const token = request.headers['authorization'].replace('Bearer ', '');
     const sub = await this.authService.getSubFromToken(token);
 

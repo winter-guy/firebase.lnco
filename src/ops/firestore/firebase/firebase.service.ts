@@ -3,33 +3,50 @@ import { Guid } from '@lib/guid.util';
 import { Injectable } from '@nestjs/common';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
 
-import { Artefact, Article } from 'src/dto/artefact';
+import { Record, SecRecord, Journal } from 'src/dto/artefact';
 import { FileRef } from 'src/dto/files';
 
 @Injectable()
 export class FirebaseService {
   constructor(
     @InjectFirebaseAdmin() private readonly firebase: FirebaseAdmin,
-  ) {}
+  ) { }
 
-  async getArtifacts(): Promise<Artefact[]> {
-    const docRef = this.firebase.firestore.collection('artifacts');
+  async getArtifacts(): Promise<Journal[]> {
+    const docRefs = await this.firebase.firestore.collection('artifacts').get();
 
-    const snapshot = await docRef.get();
-    const artifacts: Artefact[] = [];
+    /**
+     * Fetch documents in parallel using batched reads
+     * @param docRef is QueryDocumentSnapshot of <FirebaseFirestore.DocumentData>
+     * 
+     * @returns Await all batched reads to complete
+    */
+    const batchedReads = docRefs.docs.map(async (docRef) => {
+      const { meta } = docRef.data() as Record;
 
-    snapshot.forEach((doc) => {
-      const artefact: Artefact = {
-        id: doc.id,
-        ...doc.data(),
-      } as Artefact;
-      artifacts.push(artefact);
+      return {
+        id: docRef.id,
+        author: meta.author,
+
+        // tags: meta.tags,
+        forepart: meta.imgs[0],
+        backdrop: meta.imgs[1],
+        createdDate: meta.createdDate,
+        modifiedDate: meta.modifiedDate,
+
+        head: meta.head,
+        meta: meta.meta,
+        details: meta.details,
+
+        cl: 0
+      };
     });
 
-    return artifacts;
+    return await Promise.all(batchedReads);
   }
 
-  async getArtefactById(id: string, _sub: string): Promise<Article> {
+
+  async getArtefactById(id: string, _sub: string): Promise<SecRecord> {
     const docRef = this.firebase.firestore.collection('artifacts');
 
     const snapshot = await docRef.doc(id).get();
@@ -44,35 +61,45 @@ export class FirebaseService {
       isEditable: doesBelongToUser,
       isDelete: doesBelongToUser,
       ...snapshot.data(),
-    } as Article;
+    } as SecRecord;
   }
 
-  async createArtefact(artefact: Artefact, sub: string): Promise<Artefact> {
+  /**
+  * Adds a new artefact to the Firestore database and updates contributors.
+  * @param artefact The artefact data to be added.
+  * @param sub The subject or contributor of the artefact.
+  * @returns The artefact with the generated ID.
+  */
+  async createArtefact(artefact: Record, sub: string): Promise<Record> {
     try {
-      // Add a new document with a generated ID
+      // Adding artefact to Firestore collection
       const docRef = await this.firebase.firestore
         .collection('artifacts')
         .add(artefact);
 
+      // Updates artefact with generated ID
       await docRef.update({ ...artefact, id: docRef.id });
-      
-      // Log the ID of the newly created document
+
+      // Update contributors with document reference
       const isUpdatedRef = await this.updateContributorsWithDocRef(
         docRef.id,
         sub,
       );
 
       isUpdatedRef;
-      // Return the artefact with the generated ID
+
+      // Returns the artefact with the generated ID
       return { ...artefact, id: docRef.id };
     } catch (error) {
+      // Log error and throw exception if failed
       console.error(`Error adding document: ${error}`);
       throw new Error('Failed to create artefact');
     }
   }
 
-  async updateArtefact(id: string, artefact: Partial<Artefact>, _sub: string): Promise<Artefact> {
-    if(!await this.doesArtefactBelongToUser(id, _sub)){
+
+  async updateArtefact(id: string, artefact: Partial<Record>, _sub: string): Promise<Record> {
+    if (!await this.doesArtefactBelongToUser(id, _sub)) {
       throw new Error('Failed to update document');
     }
 
@@ -84,11 +111,11 @@ export class FirebaseService {
     return {
       id: updates.id,
       ...updates.data(),
-    } as Artefact;
+    } as Record;
   }
 
   async deleteItem(id: string, _sub: string): Promise<void> {
-    if(!await this.doesArtefactBelongToUser(id, _sub)){
+    if (!await this.doesArtefactBelongToUser(id, _sub)) {
       throw new Error('Failed to delete document');
     }
 
@@ -108,13 +135,13 @@ export class FirebaseService {
     try {
       const guid = Guid.newGuid() + `.${file.originalname.split('.').pop()}`;
       const storageRef = this.firebase.storage.bucket('lnco-artifacts.appspot.com');
-  
+
       const filePath = isPrivate ? 'private/images/' + guid : 'images/' + guid;
-  
+
       const fileRef = storageRef.file(filePath);
       await fileRef.save(file.buffer);
-  
-      if(isPrivate) {
+
+      if (isPrivate) {
         const ref = await this.generateRefForPrivateFiles(fileRef);
         return {
           url: ref,
@@ -145,7 +172,7 @@ export class FirebaseService {
 
     return signedUrl
   }
-  
+
   async updateContributorsWithDocRef(_docRefID: string, _sub: string): Promise<void> {
     const contributorRef = this.firebase.firestore
       .collection('contributors')
@@ -176,31 +203,31 @@ export class FirebaseService {
     const contributorRef = this.firebase.firestore
       .collection('contributors')
       .doc(_sub);
-    
-      try {
-        const contributorSnapshot = await contributorRef.get();
 
-        if (!contributorSnapshot.exists) {
-          throw new Error('Contributor document not found');
-        }
-    
-        const contributorData = contributorSnapshot.data();
-        if (!contributorData || !Array.isArray(contributorData.artifacts)) {
-          throw new Error('Artifacts field is missing or not an array');
-        }
-        
-        const updatedArtifacts = [...contributorData.artifacts];
-        const indexToRemove = updatedArtifacts.indexOf(id);
-        
-        if (indexToRemove !== -1) {
-          updatedArtifacts.splice(indexToRemove, 1); // Remove the item at indexToRemove
-        }
-        
-        await contributorRef.update({ artifacts: updatedArtifacts });
-      } catch (error) {
-        console.error('Error removing artifact:', error);
-        throw error; // Rethrow the error for handling in the calling function if necessary
+    try {
+      const contributorSnapshot = await contributorRef.get();
+
+      if (!contributorSnapshot.exists) {
+        throw new Error('Contributor document not found');
       }
+
+      const contributorData = contributorSnapshot.data();
+      if (!contributorData || !Array.isArray(contributorData.artifacts)) {
+        throw new Error('Artifacts field is missing or not an array');
+      }
+
+      const updatedArtifacts = [...contributorData.artifacts];
+      const indexToRemove = updatedArtifacts.indexOf(id);
+
+      if (indexToRemove !== -1) {
+        updatedArtifacts.splice(indexToRemove, 1); // Remove the item at indexToRemove
+      }
+
+      await contributorRef.update({ artifacts: updatedArtifacts });
+    } catch (error) {
+      console.error('Error removing artifact:', error);
+      throw error; // Rethrow the error for handling in the calling function if necessary
+    }
   }
 
   async doesArtefactBelongToUser(id: string, _sub: string): Promise<boolean> {
