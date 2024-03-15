@@ -13,18 +13,20 @@ import {
 } from '@nestjs/common';
 
 import { AuthorizationGuard } from 'src/authorization/authorization.guard';
-import { FirebaseService } from './firebase/firebase.service';
-import { Journal, Record } from 'src/dto/artefact';
+import { FirestoreService } from './firestore/firestore.service';
+import { Journal, Record } from 'src/dto/record';
 
 import { FileInterceptor } from '@nestjs/platform-express';
 
 import { AuthService } from 'src/authorization/auth.service';
 import { FileRef } from 'src/dto/files';
+import { StorageService } from './storage/storage.service';
 
 @Controller('api/v2')
-export class FirestoreController {
+export class OpsController {
   constructor(
-    private readonly firebase: FirebaseService,
+    private readonly firebase: FirestoreService,
+    private readonly storage: StorageService,
     private readonly authService: AuthService,
   ) {}
 
@@ -84,7 +86,7 @@ export class FirestoreController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('image'))
   async uploadImage(@UploadedFile() file, @Body('isPrivate') isPrivate: string): Promise<FileRef> {
-    const pau = await this.firebase.uploadItem(file, JSON.parse(isPrivate));
+    const pau = await this.storage.uploadItem(file, JSON.parse(isPrivate));
     return pau;
   }
 }

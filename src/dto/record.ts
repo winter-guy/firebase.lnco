@@ -1,11 +1,12 @@
-export class Document {
+export interface Document {
   blocks: BlocksEntity[];
   time: number;
   version: string;
 }
 
-export class Record extends Document {
+export interface Record {
   id: string;
+  record: Document;
   meta: Meta;
 }
 
@@ -55,13 +56,13 @@ export interface Journal {
  * no to expose interface. (for internal references)
  */
 
-class BlocksEntity {
+interface BlocksEntity {
   data: Data;
   id: string;
   type: string;
 }
 
-class Data {
+interface Data {
   level?: number | null;
   text?: string | null;
   caption?: string | null;
@@ -74,6 +75,6 @@ class Data {
   code?: string | null;
 }
 
-class Tag {
+interface Tag {
   name: string;
 }

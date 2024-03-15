@@ -1,13 +1,11 @@
-import { File } from '@google-cloud/storage';
-import { Guid } from '@lib/guid.util';
 import { Injectable } from '@nestjs/common';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
 
-import { Record, SecRecord, Journal } from 'src/dto/artefact';
-import { FileRef } from 'src/dto/files';
+import { Record, SecRecord, Journal } from 'src/dto/record';
+
 
 @Injectable()
-export class FirebaseService {
+export class FirestoreService {
   constructor(
     @InjectFirebaseAdmin() private readonly firebase: FirebaseAdmin,
   ) { }
@@ -45,7 +43,6 @@ export class FirebaseService {
     return await Promise.all(batchedReads);
   }
 
-
   /**
    * Retrieves an artefact from the Firestore database by its ID and determines its accessibility for the specified user.
    * @param id The ID of the artefact to retrieve.
@@ -76,7 +73,6 @@ export class FirebaseService {
     } as SecRecord;
   }
 
-
   /**
   * Adds a new artefact to the Firestore database and updates contributors.
   * @param artefact The artefact data to be added.
@@ -85,10 +81,11 @@ export class FirebaseService {
   */
   async createArtefact(artefact: Record, sub: string): Promise<Record> {
     try {
+
       // Adding artefact to Firestore collection
       const docRef = await this.firebase.firestore
         .collection('artifacts')
-        .add(artefact);
+        .add(await this.recordPreParser(artefact));
 
       // Updates artefact with generated ID
       await docRef.update({ ...artefact, id: docRef.id });
@@ -110,22 +107,46 @@ export class FirebaseService {
     }
   }
 
+  /**
+   * Updates an artefact in the Firestore database, ensuring the document exists before updating.
+   * Throws an error if the document doesn't exist or if the artefact doesn't belong to the user.
+   * @param _id The ID of the artefact document.
+   * @param artefact The partial artefact object containing fields to update.
+   * @param _sub The user's ID.
+   * @returns The updated artefact document.
+   * @throws Error if the document doesn't exist or if the artefact doesn't belong to the user.
+   */
+  async updateArtefact(_id: string, artefact: Partial<Record>, _sub: string): Promise<Record> {
+    // Check if the document exists before proceeding
+    const docRef = this.firebase.firestore.collection('artifacts').doc(_id);
+    const docSnapshot = await docRef.get();
 
-  async updateArtefact(id: string, artefact: Partial<Record>, _sub: string): Promise<Record> {
-    if (!await this.doesArtefactBelongToUser(id, _sub)) {
+    if (!docSnapshot.exists) {
+      throw new Error('Document does not exist');
+    }
+
+    // Check if the artefact belongs to the user
+    if (!await this.doesArtefactBelongToUser(_id, _sub)) {
       throw new Error('Failed to update document');
     }
 
-    const docRef = this.firebase.firestore.collection('artifacts').doc(id);
-    await docRef.update(artefact);
+    // Update the document
+    const { id, meta } = docSnapshot.data() as Record;
+    await docRef.update({
+      id: id,
+      record: artefact.record,
+      meta: {
+        ...artefact.meta,
+        createdDate: meta.createdDate,
+        modifiedDate: Date.now()
+      }
+    });
 
-    const updates = await docRef.get();
-
-    return {
-      id: updates.id,
-      ...updates.data(),
-    } as Record;
+    // Fetch the updated document and return it
+    const updatedDocSnapshot = await docRef.get();
+    return updatedDocSnapshot.data() as Record;
   }
+
 
   async deleteItem(id: string, _sub: string): Promise<void> {
     if (!await this.doesArtefactBelongToUser(id, _sub)) {
@@ -142,48 +163,6 @@ export class FirebaseService {
       console.error(`Error deleting document: ${error}`);
       throw new Error('Failed to delete document');
     }
-  }
-
-  async uploadItem(file: any, isPrivate: boolean): Promise<FileRef> {
-    try {
-      const guid = Guid.newGuid() + `.${file.originalname.split('.').pop()}`;
-      const storageRef = this.firebase.storage.bucket('lnco-artifacts.appspot.com');
-
-      const filePath = isPrivate ? 'private/images/' + guid : 'images/' + guid;
-
-      const fileRef = storageRef.file(filePath);
-      await fileRef.save(file.buffer);
-
-      if (isPrivate) {
-        const ref = await this.generateRefForPrivateFiles(fileRef);
-        return {
-          url: ref,
-          fileRef: `https://storage.googleapis.com/lnco-artifacts.appspot.com/${filePath}`,
-          expiresBy: Date.now() + 15 * 60 * 1000,
-        };
-      }
-
-      await fileRef.makePublic();
-      return {
-        url: `https://storage.googleapis.com/lnco-artifacts.appspot.com/images/${guid}`,
-        fileRef: `https://storage.googleapis.com/lnco-artifacts.appspot.com/${filePath}`,
-        expiresBy: 0
-      };
-
-    } catch (error) {
-      console.error(`Error uploading item: ${error}`);
-      throw new Error('Failed to upload item');
-    }
-  }
-
-  async generateRefForPrivateFiles(fileRef: File): Promise<string> {
-    const [signedUrl] = await fileRef.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + 15 * 60 * 1000, // URL expires in 15 minutes
-    });
-
-    return signedUrl
   }
 
   async updateContributorsWithDocRef(_docRefID: string, _sub: string): Promise<void> {
@@ -266,5 +245,17 @@ export class FirebaseService {
     } catch (error) {
       throw new Error(`Error checking artifact ownership: ${error['message']}`);
     }
+  }
+
+  async recordPreParser(artefact: Record): Promise<Record> {
+    return {
+      id: artefact.id,
+      record: artefact.record,
+      meta: {
+        ...artefact.meta,
+        createdDate: Date.now(),
+        modifiedDate: Date.now()
+      }
+    };
   }
 }
