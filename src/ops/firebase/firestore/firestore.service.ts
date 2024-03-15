@@ -137,6 +137,7 @@ export class FirestoreService {
       record: artefact.record,
       meta: {
         ...artefact.meta,
+        id: meta.id,
         createdDate: meta.createdDate,
         modifiedDate: Date.now()
       }
