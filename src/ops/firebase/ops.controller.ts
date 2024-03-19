@@ -19,7 +19,7 @@ import { Journal, Record } from 'src/dto/record';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 import { AuthService } from 'src/authorization/auth.service';
-import { FileRef } from 'src/dto/files';
+import { FileRef, UploadData } from 'src/dto/files';
 import { StorageService } from './storage/storage.service';
 
 @Controller('api/v2')
@@ -88,5 +88,11 @@ export class OpsController {
   async uploadImage(@UploadedFile() file, @Body('isPrivate') isPrivate: string): Promise<FileRef> {
     const pau = await this.storage.uploadItem(file, JSON.parse(isPrivate));
     return pau;
+  }
+
+  @Post('upload/url')
+  async uploadItemByUrl(@Body() uploadData: UploadData): Promise<FileRef> {
+    const { url, isPrivate } = uploadData;
+    return await this.storage.uploadItemByUrl(url, isPrivate);
   }
 }

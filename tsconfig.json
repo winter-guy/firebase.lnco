@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "baseUrl": "./",
-    "module": "commonjs",
+    "module": "NodeNext",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
+    "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
     "incremental": true,
@@ -22,6 +22,7 @@
       "@config/*": ["./key/*"],
       "@lib/*": ["src/util/*"],
     },
-    "resolveJsonModule":true
+    "resolveJsonModule":true,
+    "esModuleInterop": true
   }
 }

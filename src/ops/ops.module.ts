@@ -5,10 +5,24 @@ import { AuthorizationModule } from 'src/authorization/authorization.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from 'src/app.service';
 import { StorageService } from './firebase/storage/storage.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [AuthorizationModule, ConfigModule.forRoot()],
+  imports: [
+    AuthorizationModule, 
+    HttpModule.registerAsync({
+      useFactory: () => ({
+        timeout: 5000,
+        maxRedirects: 5,
+      }) 
+    }),
+    ConfigModule.forRoot()
+  ],
   controllers: [OpsController],
-  providers: [FirestoreService, StorageService, AppService],
+  providers: [
+    FirestoreService, 
+    StorageService, 
+    AppService
+  ],
 })
 export class OpsModule { }

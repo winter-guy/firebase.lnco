@@ -159,6 +159,7 @@ export class FirestoreService {
     try {
       await docRef.delete();
       await this.removeDocRefOnDel(id, _sub);
+      
       console.log(`Document with ID ${id} deleted successfully`);
     } catch (error) {
       console.error(`Error deleting document: ${error}`);

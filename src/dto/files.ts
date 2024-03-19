@@ -3,3 +3,8 @@ export interface FileRef {
     fileRef: string;
     expiresBy?: number
   }
+
+export interface UploadData {
+  url: string;
+  isPrivate: boolean;
+}
