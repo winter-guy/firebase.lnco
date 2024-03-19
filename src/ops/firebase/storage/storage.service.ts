@@ -77,7 +77,7 @@ export class StorageService {
           // Save the file buffer to storage
           await fileRef.save(fileBuffer, {
             contentType: 'image/png' // Or set it based on the detectedType if available
-        });
+          });
     
           if (isPrivate) {
             const ref = await this.generateRefForPrivateFiles(fileRef);
