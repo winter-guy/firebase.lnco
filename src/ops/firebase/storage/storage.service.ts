@@ -3,7 +3,7 @@ import { InjectFirebaseAdmin, FirebaseAdmin } from 'nestjs-firebase';
 
 import { File } from '@google-cloud/storage';
 
-import { Guid } from '@lib/guid.util';
+import { v4 as uuidv4 } from 'uuid';
 import { FileRef } from 'src/dto/files';
 import { HttpService } from '@nestjs/axios';
 import sharp from 'sharp';
@@ -16,12 +16,12 @@ export class StorageService {
         @InjectFirebaseAdmin() private readonly firebase: FirebaseAdmin, private readonly httpService: HttpService
       ) { }
 
-      async uploadItem(file: any, isPrivate: boolean): Promise<FileRef> {
+      async uploadItem(file: any, isPrivate: boolean, _ref?: string,): Promise<FileRef> {
         try {
-          const guid = Guid.newGuid() + `.${file.originalname.split('.').pop()}`;
+          const guid: string = uuidv4() + `.${file.originalname.split('.').pop()}`;
           const storageRef = this.firebase.storage.bucket('lnco-artifacts.appspot.com');
     
-          const filePath = isPrivate ? 'private/images/' + guid : 'images/' + guid;
+          const filePath = isPrivate ? `private/images/${guid}` : _ref ? `images/${_ref}/${guid}` : `images/${guid}`;
           const fileRef = storageRef.file(filePath);
           await fileRef.save(file.buffer);
     
@@ -33,10 +33,10 @@ export class StorageService {
               expiresBy: Date.now() + 15 * 60 * 1000,
             };
           }
-    
+
           await fileRef.makePublic();
           return {
-            url: `https://storage.googleapis.com/lnco-artifacts.appspot.com/images/${guid}`,
+            url: `https://storage.googleapis.com/lnco-artifacts.appspot.com/`+ `${_ref ? `images/${_ref}/${guid}` : `images/${guid}`}`,
             fileRef: `https://storage.googleapis.com/lnco-artifacts.appspot.com/${filePath}`,
             expiresBy: 0
           };
@@ -47,12 +47,12 @@ export class StorageService {
         }
       }
 
-      async uploadItemByUrl(url: string, isPrivate: boolean): Promise<FileRef> {
+      async uploadItemByUrl(url: string, isPrivate: boolean, _ref?: any): Promise<FileRef> {
         try {
-          const guid = Guid.newGuid();
+          const guid: string = uuidv4();
           const storageRef = this.firebase.storage.bucket('lnco-artifacts.appspot.com');
-    
-          const filePath = isPrivate ? 'private/images/' + guid : 'images/' + guid;
+          const filePath = isPrivate ? `private/images/${guid}` : _ref ? `images/${_ref}/${guid}` : `images/${guid}`;
+          
           const fileRef = storageRef.file(filePath);
     
           // Download the file from the URL
@@ -90,7 +90,7 @@ export class StorageService {
     
           await fileRef.makePublic();
           return {
-            url: `https://storage.googleapis.com/lnco-artifacts.appspot.com/images/${guid}`,
+            url: `https://storage.googleapis.com/lnco-artifacts.appspot.com/`+ `${_ref ? `images/${_ref}/${guid}` : `images/${guid}`}`,
             fileRef: `https://storage.googleapis.com/lnco-artifacts.appspot.com/${filePath}`,
             expiresBy: 0
           };
@@ -134,7 +134,7 @@ export class StorageService {
           expires: Date.now() + 15 * 60 * 1000, // URL expires in 15 minutes
         });
     
-        return signedUrl
+        return signedUrl;
       }
 
       async updateContributorsWithDocRef(_docRefID: string, _sub: string): Promise<void> {

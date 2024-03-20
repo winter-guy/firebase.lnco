@@ -92,7 +92,7 @@ export class OpsController {
 
   @Post('upload/url')
   async uploadItemByUrl(@Body() uploadData: UploadData): Promise<FileRef> {
-    const { url, isPrivate } = uploadData;
-    return await this.storage.uploadItemByUrl(url, isPrivate);
+    const { url, isPrivate, ref } = uploadData;
+    return await this.storage.uploadItemByUrl(url, isPrivate, ref);
   }
 }

@@ -7,4 +7,5 @@ export interface FileRef {
 export interface UploadData {
   url: string;
   isPrivate: boolean;
+  ref?: string
 }
