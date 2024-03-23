@@ -30,13 +30,12 @@ export class OpsController {
     private readonly authService: AuthService,
   ) {}
 
-  @UseGuards(AuthorizationGuard)
   @Get('fetch')
   getArtifacts(): Promise<Journal[]> {
     return this.firebase.getArtifacts();
   }
 
-  @UseGuards(AuthorizationGuard)
+  
   @Get('fetch/:id')
   async getArtefactById(
     @Req() request: Request,
@@ -90,6 +89,7 @@ export class OpsController {
     return pau;
   }
 
+  @UseGuards(AuthorizationGuard)
   @Post('upload/url')
   async uploadItemByUrl(@Body() uploadData: UploadData): Promise<FileRef> {
     const { url, isPrivate, ref } = uploadData;

@@ -8,8 +8,6 @@ import { FileRef } from 'src/dto/files';
 import { HttpService } from '@nestjs/axios';
 import sharp from 'sharp';
 
-// import { fileTypeFromBuffer } from 'file-type';
-
 @Injectable()
 export class StorageService {
     constructor(
@@ -124,7 +122,7 @@ export class StorageService {
             console.error(`Error deleting item: ${error}`);
             throw new Error('Failed to delete item');
         }
-    }
+      }
     
 
       async generateRefForPrivateFiles(fileRef: File): Promise<string> {

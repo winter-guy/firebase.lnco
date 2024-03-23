@@ -48,6 +48,7 @@ export interface Journal {
   meta: string;
   details: string;
 
+  tags: Tag[];
   cl: number;
 }
 

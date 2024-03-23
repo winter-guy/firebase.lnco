@@ -36,6 +36,7 @@ export class FirestoreService {
         meta: meta.meta,
         details: meta.details,
 
+        tags: meta.tags,
         cl: 0
       };
     });
