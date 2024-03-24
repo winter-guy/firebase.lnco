@@ -35,7 +35,6 @@ export class OpsController {
     return this.firebase.getArtifacts();
   }
 
-  
   @Get('fetch/:id')
   async getArtefactById(
     @Req() request: Request,
@@ -63,7 +62,7 @@ export class OpsController {
   @Patch('update/:id')
   async updateArtefact(
     @Req() request: Request,
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() payload: Record,
   ): Promise<Record> {
     const token = request.headers['authorization'].replace('Bearer ', '');
@@ -75,7 +74,10 @@ export class OpsController {
 
   @UseGuards(AuthorizationGuard)
   @Delete('remove/:id')
-  async delete(@Req() request: Request, @Param('id') id: string): Promise<void> {
+  async delete(
+    @Req() request: Request,
+    @Param('id') id: string,
+  ): Promise<void> {
     const token = request.headers['authorization'].replace('Bearer ', '');
     const sub = await this.authService.getSubFromToken(token);
 
@@ -84,7 +86,10 @@ export class OpsController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('image'))
-  async uploadImage(@UploadedFile() file, @Body('isPrivate') isPrivate: string): Promise<FileRef> {
+  async uploadImage(
+    @UploadedFile() file,
+    @Body('isPrivate') isPrivate: string,
+  ): Promise<FileRef> {
     const pau = await this.storage.uploadItem(file, JSON.parse(isPrivate));
     return pau;
   }

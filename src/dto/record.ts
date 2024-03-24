@@ -12,7 +12,7 @@ export interface Record {
 
 /**
  * "SecRecord" (if "Permissions" implies security permissions)
-*/
+ */
 export interface SecRecord extends Record {
   isEditable: boolean;
   isDelete: boolean;
@@ -32,7 +32,7 @@ export interface Meta {
   meta?: string;
   details: string;
 
-  cl?: number; /* content length */
+  cl?: number /* content length */;
 }
 
 export interface Journal {
@@ -51,7 +51,6 @@ export interface Journal {
   tags: Tag[];
   cl: number;
 }
-
 
 /**
  * no to expose interface. (for internal references)

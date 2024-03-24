@@ -6,23 +6,29 @@ import { ConfigModule } from '@nestjs/config';
 import { AppService } from 'src/app.service';
 import { StorageService } from './firebase/storage/storage.service';
 import { HttpModule } from '@nestjs/axios';
+import { DraftService } from './firebase/draft/draft.service';
+import { SharedService } from './firebase/shared/shared.service';
 
 @Module({
   imports: [
-    AuthorizationModule, 
+    AuthorizationModule,
     HttpModule.registerAsync({
       useFactory: () => ({
         timeout: 5000,
         maxRedirects: 5,
-      }) 
+      }),
     }),
-    ConfigModule.forRoot()
+    ConfigModule.forRoot(),
   ],
   controllers: [OpsController],
   providers: [
-    FirestoreService, 
-    StorageService, 
-    AppService
+    FirestoreService,
+    StorageService,
+    DraftService,
+
+    SharedService,
+
+    AppService,
   ],
 })
-export class OpsModule { }
+export class OpsModule {}
