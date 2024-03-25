@@ -64,6 +64,35 @@ export class SharedService {
     }
   }
 
+  async updateContributorsWithDocRef(
+    _docRefID: string,
+    _sub: string,
+  ): Promise<void> {
+    const contributorRef = this.firebase.firestore
+      .collection('contributors')
+      .doc(_sub);
+
+    contributorRef
+      .get()
+      .then((contributorSnapshot) => {
+        if (contributorSnapshot.exists) {
+          // Document with ID _sub exists in the 'contributors' collection
+          contributorRef.update({
+            artifacts: [...contributorSnapshot.data().artifacts, _docRefID],
+          });
+
+          // check process to verify the id updated in contribution collection of specified sub claim.
+        } else {
+          // Document with ID _sub does not exist
+          console.log('Document does not exist');
+          contributorRef.set({ artifacts: [_docRefID] });
+        }
+      })
+      .catch((error) => {
+        console.error('Error checking document existence:', error);
+      });
+  }
+
   async recordPreParser(artefact: Record): Promise<Record> {
     return {
       id: artefact.id,

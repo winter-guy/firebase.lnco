@@ -4,15 +4,20 @@ import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
 import { Record, SecRecord, Journal } from 'src/dto/record';
 import { SharedService } from '../shared/shared.service';
 
+import { SHA256, enc } from 'crypto-js';
+
 @Injectable()
 export class FirestoreService {
+  private readonly ARTEFACT = 'artifacts';
   constructor(
     @InjectFirebaseAdmin() private readonly firebase: FirebaseAdmin,
     private readonly shared: SharedService,
   ) {}
 
   async getArtifacts(): Promise<Journal[]> {
-    const docRefs = await this.firebase.firestore.collection('artifacts').get();
+    const docRefs = await this.firebase.firestore
+      .collection(this.ARTEFACT)
+      .get();
 
     /**
      * Fetch documents in parallel using batched reads
@@ -53,7 +58,7 @@ export class FirestoreService {
    * @throws Error if the artefact is not found or if there's an error accessing the database.
    */
   async getArtefactById(id: string, _sub: string): Promise<SecRecord> {
-    const docRef = this.firebase.firestore.collection('artifacts');
+    const docRef = this.firebase.firestore.collection(this.ARTEFACT);
 
     // Retrieve artefact snapshot from Firestore
     const snapshot = await docRef.doc(id).get();
@@ -80,30 +85,35 @@ export class FirestoreService {
 
   /**
    * Adds a new artefact to the Firestore database and updates contributors.
-   * @param artefact The artefact data to be added.
+   * @param record The artefact data to be added.
    * @param sub The subject or contributor of the artefact.
    * @returns The artefact with the generated ID.
    */
-  async createArtefact(artefact: Record, sub: string): Promise<Record> {
+  async createArtefact(record: Record, sub: string): Promise<Record> {
     try {
       // Adding artefact to Firestore collection
-      const docRef = await this.firebase.firestore
-        .collection('artifacts')
-        .add(await this.shared.recordPreParser(artefact));
+      const customDocId = `${record.meta.head
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, '-')
+        .toLowerCase()}-${SHA256(enc.Utf8.parse(record.meta.head))}`;
+      record = { ...record, id: customDocId };
+      const rec = await this.firebase.firestore
+        .collection(this.ARTEFACT)
+        .doc(customDocId);
 
-      // Updates artefact with generated ID
-      await docRef.update({ ...artefact, id: docRef.id });
+      const parsedRecordPromise = await this.shared.recordPreParser(record);
+      await rec.set(parsedRecordPromise);
 
       // Update contributors with document reference
       const isUpdatedRef = await this.updateContributorsWithDocRef(
-        docRef.id,
+        customDocId,
         sub,
       );
 
       isUpdatedRef;
 
       // Returns the artefact with the generated ID
-      return { ...artefact, id: docRef.id };
+      return { ...record, id: customDocId };
     } catch (error) {
       // Log error and throw exception if failed
       console.error(`Error adding document: ${error}`);
@@ -126,7 +136,7 @@ export class FirestoreService {
     _sub: string,
   ): Promise<Record> {
     // Check if the document exists before proceeding
-    const docRef = this.firebase.firestore.collection('artifacts').doc(_id);
+    const docRef = this.firebase.firestore.collection(this.ARTEFACT).doc(_id);
     const docSnapshot = await docRef.get();
 
     if (!docSnapshot.exists) {
@@ -161,7 +171,7 @@ export class FirestoreService {
       throw new Error('Failed to delete document');
     }
 
-    const docRef = this.firebase.firestore.collection('artifacts').doc(id);
+    const docRef = this.firebase.firestore.collection(this.ARTEFACT).doc(id);
 
     try {
       await docRef.delete();
@@ -175,7 +185,7 @@ export class FirestoreService {
   }
 
   async updateContributorsWithDocRef(
-    _docRefID: string,
+    _docRef: string,
     _sub: string,
   ): Promise<void> {
     const contributorRef = this.firebase.firestore
@@ -188,14 +198,14 @@ export class FirestoreService {
         if (contributorSnapshot.exists) {
           // Document with ID _sub exists in the 'contributors' collection
           contributorRef.update({
-            artifacts: [...contributorSnapshot.data().artifacts, _docRefID],
+            artifacts: [...contributorSnapshot.data().artifacts, _docRef],
           });
 
           // check process to verify the id updated in contribution collection of specified sub claim.
         } else {
           // Document with ID _sub does not exist
           console.log('Document does not exist');
-          contributorRef.set({ artifacts: [_docRefID] });
+          contributorRef.set({ artifacts: [_docRef] });
         }
       })
       .catch((error) => {

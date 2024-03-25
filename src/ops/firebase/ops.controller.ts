@@ -21,6 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from 'src/authorization/auth.service';
 import { FileRef, UploadData } from 'src/dto/files';
 import { StorageService } from './storage/storage.service';
+import { DraftService } from './draft/draft.service';
 
 @Controller('api/v2')
 export class OpsController {
@@ -28,6 +29,8 @@ export class OpsController {
     private readonly firebase: FirestoreService,
     private readonly storage: StorageService,
     private readonly authService: AuthService,
+
+    private readonly drafts: DraftService,
   ) {}
 
   @Get('fetch')
@@ -54,7 +57,6 @@ export class OpsController {
     const token = request.headers['authorization'].replace('Bearer ', '');
     const sub = await this.authService.getSubFromToken(token);
 
-    console.log(`User ID: ${sub}`);
     return this.firebase.createArtefact(artefact, sub);
   }
 
@@ -68,7 +70,6 @@ export class OpsController {
     const token = request.headers['authorization'].replace('Bearer ', '');
     const sub = await this.authService.getSubFromToken(token);
 
-    console.log(`User ID: ${sub}`);
     return this.firebase.updateArtefact(id, payload, sub);
   }
 
@@ -99,5 +100,17 @@ export class OpsController {
   async uploadItemByUrl(@Body() uploadData: UploadData): Promise<FileRef> {
     const { url, isPrivate, ref } = uploadData;
     return await this.storage.uploadItemByUrl(url, isPrivate, ref);
+  }
+
+  @UseGuards(AuthorizationGuard)
+  @Post('draft')
+  async createDraft(
+    @Req() request: Request,
+    @Body() artefact: Record,
+  ): Promise<Record> {
+    const token = request.headers['authorization'].replace('Bearer ', '');
+    const sub = await this.authService.getSubFromToken(token);
+
+    return this.drafts.createDraftOfInstance(artefact, sub);
   }
 }
