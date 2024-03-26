@@ -57,17 +57,19 @@ export class FirestoreService {
    * @returns A Promise resolving to an object containing the artefact data and its accessibility status.
    * @throws Error if the artefact is not found or if there's an error accessing the database.
    */
-  async getArtefactById(id: string, _sub: string): Promise<SecRecord> {
+  async getArtefactById(id: string, _sub?: string): Promise<SecRecord> {
     const docRef = this.firebase.firestore.collection(this.ARTEFACT);
 
     // Retrieve artefact snapshot from Firestore
     const snapshot = await docRef.doc(id).get();
 
     // Check if the artefact belongs to the specified user
-    const doesBelongToUser = await this.shared.doesArtefactBelongToUser(
-      id,
-      _sub,
-    );
+    let doesBelongToUser = false;
+
+    // Check if _sub is provided and call doesArtefactBelongToUser if available
+    if (_sub) {
+      doesBelongToUser = await this.shared.doesArtefactBelongToUser(id, _sub);
+    }
 
     // Throw an error if the artefact does not exist
     if (!snapshot.exists) {
@@ -96,6 +98,7 @@ export class FirestoreService {
         .replace(/[^\w\s]/g, '')
         .replace(/\s+/g, '-')
         .toLowerCase()}-${SHA256(enc.Utf8.parse(record.meta.head))}`;
+
       record = { ...record, id: customDocId };
       const rec = await this.firebase.firestore
         .collection(this.ARTEFACT)

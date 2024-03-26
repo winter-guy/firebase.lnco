@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Req,
+  UnauthorizedException,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -43,8 +44,26 @@ export class OpsController {
     @Req() request: Request,
     @Param('id') id: string,
   ): Promise<Record> {
-    const token = request.headers['authorization'].replace('Bearer ', '');
+    // Retrieve the Authorization header from the request
+    const authorizationHeader = request.headers['authorization'];
+
+    // Check if Authorization header is present in the request
+    if (!authorizationHeader) {
+      return this.firebase.getArtefactById(id);
+
+      // throw exception (disabled) -> triggers logout event.
+      throw new UnauthorizedException(
+        'Authentication required. Authorization header missing',
+      );
+    }
+
+    // Extract token from the Authorization header
+    const token = authorizationHeader.replace('Bearer ', '');
+
+    // Retrieve sub from token
     const sub = await this.authService.getSubFromToken(token);
+
+    // Return the artifact data
     return this.firebase.getArtefactById(id, sub);
   }
 
