@@ -102,6 +102,7 @@ export class SharedService {
         createdDate: Date.now(),
         modifiedDate: Date.now(),
       },
+      inShort: artefact.inShort,
     };
   }
 }
