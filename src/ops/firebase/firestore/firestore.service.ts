@@ -158,10 +158,11 @@ export class FirestoreService {
       record: artefact.record,
       meta: {
         ...artefact.meta,
-        id: meta.id,
+        id: id,
         createdDate: meta.createdDate,
         modifiedDate: Date.now(),
       },
+      inShort: artefact.inShort,
     });
 
     // Fetch the updated document and return it
