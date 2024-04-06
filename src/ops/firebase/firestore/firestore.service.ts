@@ -97,7 +97,7 @@ export class FirestoreService {
       const customDocId = `${record.meta.head
         .replace(/[^\w\s]/g, '')
         .replace(/\s+/g, '-')
-        .toLowerCase()}-${SHA256(enc.Utf8.parse(record.meta.head))}`;
+        .toLowerCase()}-${SHA256(enc.Utf8.parse(record.meta.head + Number(new Date()) + sub))}`;
 
       record = { ...record, id: customDocId };
       const rec = await this.firebase.firestore
