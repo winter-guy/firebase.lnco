@@ -39,6 +39,25 @@ export class OpsController {
     return this.firebase.getArtifacts();
   }
 
+  @UseGuards(AuthorizationGuard)
+  @Get('user/journal')
+  async getJournal(@Req() request: Request): Promise<Journal[]> {
+    const authorizationHeader = request.headers['authorization'];
+
+    if (!authorizationHeader) {
+      // return this.firebase.getArtefactById(id);
+      // throw exception (disabled) -> triggers logout event.
+      throw new UnauthorizedException(
+        'Authentication required. Authorization header missing',
+      );
+    }
+
+    const token = authorizationHeader.replace('Bearer ', '');
+    const sub = await this.authService.getSubFromToken(token);
+
+    return this.firebase.getJournal(sub);
+  }
+
   @Get('fetch/:id')
   async getArtefactById(
     @Req() request: Request,

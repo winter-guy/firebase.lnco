@@ -1,23 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { FirebaseAdmin, InjectFirebaseAdmin } from 'nestjs-firebase';
 
-import { Record, SecRecord, Journal } from 'src/dto/record';
+import {
+  Record,
+  SecRecord,
+  Journal,
+  articles as Articles,
+} from 'src/dto/record';
 import { SharedService } from '../shared/shared.service';
 
 import { SHA256, enc } from 'crypto-js';
 
+const CONTRIBUTORS = 'contributors';
+const ARTIFACTS = 'artifacts';
+
 @Injectable()
 export class FirestoreService {
-  private readonly ARTEFACT = 'artifacts';
   constructor(
     @InjectFirebaseAdmin() private readonly firebase: FirebaseAdmin,
     private readonly shared: SharedService,
   ) {}
 
   async getArtifacts(): Promise<Journal[]> {
-    const docRefs = await this.firebase.firestore
-      .collection(this.ARTEFACT)
-      .get();
+    const docRefs = await this.firebase.firestore.collection(ARTIFACTS).get();
 
     /**
      * Fetch documents in parallel using batched reads
@@ -50,6 +55,73 @@ export class FirestoreService {
     return await Promise.all(batchedReads);
   }
 
+  async getJournal(sub: string): Promise<Journal[]> {
+    const contributorsRef = await this.firebase.firestore
+      .collection(CONTRIBUTORS)
+      .doc(sub)
+      .get();
+
+    if (!contributorsRef.exists) {
+      console.log(`Contributor with ID ${sub} does not exist`);
+      return;
+    }
+
+    const journals: Journal[] = [];
+    if (contributorsRef.exists) {
+      const artifactIds = (contributorsRef.data() as Articles).artifacts;
+
+      const artifacts = await Promise.all(
+        artifactIds.map(async (id) => {
+          const docRef = await this.firebase.firestore
+            .collection(ARTIFACTS)
+            .doc(id)
+            .get();
+          if (docRef.exists) {
+            const { meta } = docRef.data() as Record;
+            return {
+              id: docRef.id,
+              author: meta.author,
+
+              // tags: meta.tags,
+              forepart: meta.imgs[0],
+              backdrop: meta.imgs[1],
+              createdDate: meta.createdDate,
+              modifiedDate: meta.modifiedDate,
+
+              head: meta.head,
+              meta: meta.meta,
+              details: meta.details,
+
+              tags: meta.tags,
+              cl: 0,
+            };
+          } else {
+            console.log(
+              `Document with ID ${id} does not exist in the ARTIFACTS collection`,
+            );
+            return null;
+          }
+        }),
+      );
+
+      // Filter out null values (documents that were not found)
+      const validArtifactsData = artifacts.filter((data) => data !== null);
+
+      journals.push(...validArtifactsData);
+    }
+
+    return journals;
+
+    /**
+     * Fetch documents in parallel using batched reads
+     * @param docRef is QueryDocumentSnapshot of <FirebaseFirestore.DocumentData>
+     *
+     * @returns Await all batched reads to complete
+     */
+
+    // return await Promise.all(batchedReads);
+  }
+
   /**
    * Retrieves an artefact from the Firestore database by its ID and determines its accessibility for the specified user.
    * @param id The ID of the artefact to retrieve.
@@ -58,7 +130,7 @@ export class FirestoreService {
    * @throws Error if the artefact is not found or if there's an error accessing the database.
    */
   async getArtefactById(id: string, _sub?: string): Promise<SecRecord> {
-    const docRef = this.firebase.firestore.collection(this.ARTEFACT);
+    const docRef = this.firebase.firestore.collection(ARTIFACTS);
 
     // Retrieve artefact snapshot from Firestore
     const snapshot = await docRef.doc(id).get();
@@ -101,7 +173,7 @@ export class FirestoreService {
 
       record = { ...record, id: customDocId };
       const rec = await this.firebase.firestore
-        .collection(this.ARTEFACT)
+        .collection(ARTIFACTS)
         .doc(customDocId);
 
       const parsedRecordPromise = await this.shared.recordPreParser(record);
@@ -139,7 +211,7 @@ export class FirestoreService {
     _sub: string,
   ): Promise<Record> {
     // Check if the document exists before proceeding
-    const docRef = this.firebase.firestore.collection(this.ARTEFACT).doc(_id);
+    const docRef = this.firebase.firestore.collection(ARTIFACTS).doc(_id);
     const docSnapshot = await docRef.get();
 
     if (!docSnapshot.exists) {
@@ -175,7 +247,7 @@ export class FirestoreService {
       throw new Error('Failed to delete document');
     }
 
-    const docRef = this.firebase.firestore.collection(this.ARTEFACT).doc(id);
+    const docRef = this.firebase.firestore.collection(ARTIFACTS).doc(id);
 
     try {
       await docRef.delete();

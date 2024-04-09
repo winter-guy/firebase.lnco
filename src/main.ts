@@ -10,7 +10,7 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // enable cookies
   });
-  
+
   await app.listen(3000);
 }
 

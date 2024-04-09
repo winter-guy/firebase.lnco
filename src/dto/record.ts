@@ -84,3 +84,7 @@ interface InShort {
   head: string;
   content: string;
 }
+
+export interface articles {
+  artifacts: string[];
+}
