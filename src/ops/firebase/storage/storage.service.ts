@@ -31,6 +31,7 @@ export class StorageService {
         : _ref
           ? `images/${_ref}/${guid}`
           : `images/${guid}`;
+
       const fileRef = storageRef.file(filePath);
       await fileRef.save(file.buffer);
 
