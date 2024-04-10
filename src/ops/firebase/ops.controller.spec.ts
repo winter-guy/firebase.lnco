@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FirestoreController } from './firestore.controller';
+import { OpsController } from './ops.controller';
 
-describe('FsFirestoreController', () => {
-  let controller: FirestoreController;
+describe('OpsController', () => {
+  let controller: OpsController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [FirestoreController],
+      controllers: [OpsController],
     }).compile();
 
-    controller = module.get<FirestoreController>(FirestoreController);
+    controller = module.get<OpsController>(OpsController);
   });
 
   it('should be defined', () => {

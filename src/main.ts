@@ -6,7 +6,7 @@ async function bootstrap() {
 
   // Specify allowed origins in the array
   app.enableCors({
-    origin: process.env.CORS_ORIGIN.split(','),
+    origin: process.env.CORS_ORIGIN,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // enable cookies
   });
