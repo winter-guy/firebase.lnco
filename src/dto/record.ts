@@ -25,6 +25,7 @@ export interface Meta {
   username: string;
 
   tags: Tag[];
+  poster: string;
   imgs: string[];
   createdDate: number;
   modifiedDate: number;

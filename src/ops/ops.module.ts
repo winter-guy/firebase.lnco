@@ -8,6 +8,7 @@ import { StorageService } from './firebase/storage/storage.service';
 import { HttpModule } from '@nestjs/axios';
 import { DraftService } from './firebase/draft/draft.service';
 import { SharedService } from './firebase/shared/shared.service';
+import { HealthModule } from 'src/health/health.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SharedService } from './firebase/shared/shared.service';
       }),
     }),
     ConfigModule.forRoot(),
+    HealthModule,
   ],
   controllers: [OpsController],
   providers: [

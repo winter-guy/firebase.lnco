@@ -38,7 +38,7 @@ export class FirestoreService {
         author: meta.author,
 
         // tags: meta.tags,
-        forepart: meta.imgs[0],
+        forepart: meta.poster,
         backdrop: meta.imgs[1],
         createdDate: meta.createdDate,
         modifiedDate: meta.modifiedDate,
@@ -83,7 +83,7 @@ export class FirestoreService {
               author: meta.author,
 
               // tags: meta.tags,
-              forepart: meta.imgs[0],
+              forepart: meta.poster,
               backdrop: meta.imgs[1],
               createdDate: meta.createdDate,
               modifiedDate: meta.modifiedDate,
