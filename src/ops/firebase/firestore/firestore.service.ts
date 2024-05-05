@@ -42,6 +42,7 @@ export class FirestoreService {
         backdrop: meta.imgs[1],
         createdDate: meta.createdDate,
         modifiedDate: meta.modifiedDate,
+        shots: meta.imgs,
 
         head: meta.head,
         meta: meta.meta,

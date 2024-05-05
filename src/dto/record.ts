@@ -45,6 +45,7 @@ export interface Journal {
   backdrop: string;
   createdDate: number;
   modifiedDate: number;
+  shots?: string[];
 
   head: string;
   meta: string;
